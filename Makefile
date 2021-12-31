@@ -4,14 +4,16 @@ COMBO_PLT = $(HOME)/.cuttlefish_combo_dialyzer_plt
 
 REBAR := $(CURDIR)/rebar3
 
-REBAR_URL := https://s3.amazonaws.com/rebar3/rebar3
-
 .PHONY: all
 all: $(REBAR) compile
-	echo $(REBAR)
+$(REBAR):
+ifneq ($(wildcard rebar3),rebar3)
+	@curl -Lo rebar3 $(REBAR_URL) || wget $(REBAR_URL)
+endif
+	@chmod a+x rebar3
 
 .PHONY: deps
-deps:
+deps: $(REBAR)
 	$(REBAR) get-deps
 
 .PHONY: distclean
@@ -27,13 +29,14 @@ compile: deps
 escript: export CUTTLEFISH_ESCRIPT = true
 escript: $(REBAR)
 	$(REBAR) as escript escriptize
+	rm -rf _escript
 
 .PHONY: clean
 clean: distclean
 
 .PHONY: distclean
 distclean:
-	@rm -rf _build cuttlefish erl_crash.dump rebar3.crashdump rebar.lock
+	@rm -rf _build _escript cuttlefish erl_crash.dump rebar3.crashdump rebar.lock
 
 .PHONY: eunit
 eunit: compile
@@ -45,14 +48,3 @@ cover:
 .PHONY: dialyzer
 dialyzer:
 	$(REBAR) dialyzer
-
-.PHONY: $(REBAR)
-$(REBAR):
-ifneq ($(wildcard rebar3),rebar3)
-	@curl -Lo rebar3 $(REBAR_URL) || wget $(REBAR_URL)
-endif
-	@chmod a+x rebar3
-
-ifeq ($(OS),Windows_NT)
-	@$(CURDIR)/rebar3 update
-endif
